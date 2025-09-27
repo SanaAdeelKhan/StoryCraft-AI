@@ -1,3 +1,119 @@
+import streamlit as st
+from streamlit_drawable_canvas import st_canvas
+from PIL import Image
+from fpdf import FPDF
+import google.generativeai as genai
+import io
+import os
+import base64
+from elevenlabs import generate, set_api_key
+
+# --- Setup ---
+st.set_page_config(page_title="StoryCraft AI", layout="wide")
+st.title("📚 StoryCraft AI – AI Storybook Generator with TTS")
+
+# Gemini API setup
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+text_model = genai.GenerativeModel("models/gemini-2.5-flash")
+
+# ElevenLabs setup
+set_api_key(os.getenv("ELEVENLABS_API_KEY"))
+
+st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!")
+
+# --- Input Options ---
+st.sidebar.header("Choose Input Method")
+option = st.sidebar.radio("Select how to start:", ["Upload Images", "Draw a Doodle", "Type Description"])
+
+uploaded_files = []
+drawn_image = None
+typed_description = None
+
+clear_canvas = st.sidebar.button("🧹 Clear Canvas")
+if clear_canvas:
+    st.session_state["canvas_cleared"] = True
+
+if option == "Upload Images":
+    uploaded_files = st.file_uploader(
+        "Upload doodles or drawings",
+        type=["png", "jpg", "jpeg"],
+        accept_multiple_files=True
+    )
+
+elif option == "Draw a Doodle":
+    if "canvas_cleared" not in st.session_state:
+        st.session_state["canvas_cleared"] = False
+
+    canvas = st_canvas(
+        fill_color="rgba(255,255,255,1)",
+        stroke_width=4,
+        stroke_color="#000000",
+        background_color="#ffffff",
+        width=400,
+        height=400,
+        drawing_mode="freedraw",
+        key="canvas"
+    )
+
+    if st.session_state["canvas_cleared"]:
+        canvas.image_data = None
+        st.session_state["canvas_cleared"] = False
+
+    if canvas.image_data is not None:
+        drawn_image = Image.fromarray((canvas.image_data).astype("uint8"))
+
+elif option == "Type Description":
+    typed_description = st.text_area("Describe your doodle or scene here:")
+
+# --- Theme ---
+theme = st.selectbox(
+    "Choose Story Theme",
+    ["Adventure", "Comedy", "Fantasy", "Friendship", "Mystery", "Moral", "Islamic"],
+    index=0
+)
+
+# --- Story Generation ---
+def generate_story(captions, theme="Fantasy"):
+    prompt = f"Write a short children's story in a {theme} style based on these scenes:\n"
+    for i, cap in enumerate(captions, 1):
+        prompt += f"Scene {i}: {cap}\n"
+
+    if theme == "Moral":
+        prompt += "\nMake sure the story ends with a clear moral life lesson for kids."
+    elif theme == "Islamic":
+        prompt += "\nKeep the story child-friendly with Islamic values: honesty, kindness, respect, dua, helping parents, etc."
+
+    try:
+        response = text_model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        return f"(Fallback Story) Once upon a time, there was a doodle that became a magical adventure. [Error: {e}]"
+
+# --- PDF Creation ---
+def create_pdf(story_text):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, story_text)
+    pdf_path = "storybook.pdf"
+    pdf.output(pdf_path)
+    return pdf_path
+
+# --- ElevenLabs TTS ---
+def text_to_speech(text, voice_name="Rachel"):
+    try:
+        audio = generate(
+            text=text,
+            voice=voice_name,
+            model="eleven_multilingual_v1"
+        )
+        return audio
+    except Exception as e:
+        st.error(f"TTS generation failed: {e}")
+        return None
+
+# --- Main Story Generation Flow ---
 if st.button("✨ Generate Storybook"):
     with st.spinner("Generating story... 📖"):
         captions = []
@@ -26,11 +142,10 @@ if st.button("✨ Generate Storybook"):
             st.stop()
 
         story = generate_story(captions, theme)
+        st.session_state["generated_story"] = story
 
     st.subheader("📖 Generated Story")
-    st.write(story)
-
-    st.session_state["generated_story"] = story
+    st.write(st.session_state["generated_story"])
 
 # --- Separate TTS Button ---
 if "generated_story" in st.session_state:
