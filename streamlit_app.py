@@ -5,8 +5,7 @@ from fpdf import FPDF
 import google.generativeai as genai
 import io
 import os
-import base64
-from elevenlabs import generate, set_api_key, voices, play
+from elevenlabs import generate, set_api_key
 
 # --- Setup ---
 st.set_page_config(page_title="StoryCraft AI", layout="wide")
@@ -16,14 +15,18 @@ st.title("📚 StoryCraft AI – AI Storybook Generator with TTS")
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-# ElevenLabs setup
+# ElevenLabs API setup
 set_api_key(os.getenv("ELEVENLABS_API_KEY"))
 
-st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!")
+st.markdown(
+    "Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!"
+)
 
 # --- Input Options ---
 st.sidebar.header("Choose Input Method")
-option = st.sidebar.radio("Select how to start:", ["Upload Images", "Draw a Doodle", "Type Description"])
+option = st.sidebar.radio(
+    "Select how to start:", ["Upload Images", "Draw a Doodle", "Type Description"]
+)
 
 uploaded_files = []
 drawn_image = None
@@ -37,7 +40,7 @@ if option == "Upload Images":
     uploaded_files = st.file_uploader(
         "Upload doodles or drawings",
         type=["png", "jpg", "jpeg"],
-        accept_multiple_files=True
+        accept_multiple_files=True,
     )
 
 elif option == "Draw a Doodle":
@@ -52,7 +55,7 @@ elif option == "Draw a Doodle":
         width=400,
         height=400,
         drawing_mode="freedraw",
-        key="canvas"
+        key="canvas",
     )
 
     if st.session_state["canvas_cleared"]:
@@ -69,7 +72,7 @@ elif option == "Type Description":
 theme = st.selectbox(
     "Choose Story Theme",
     ["Adventure", "Comedy", "Fantasy", "Friendship", "Mystery", "Moral", "Islamic"],
-    index=0
+    index=0,
 )
 
 # --- Story Generation ---
@@ -108,7 +111,7 @@ def text_to_speech(text, voice_name="Rachel"):
             voice=voice_name,
             model="eleven_multilingual_v1"
         )
-        return audio
+        return io.BytesIO(audio)
     except Exception as e:
         st.error(f"TTS generation failed: {e}")
         return None
@@ -145,8 +148,7 @@ if st.button("✨ Generate Storybook with TTS"):
     st.write(story)
 
     st.subheader("🔊 Story Audio Playback")
-    # TTS
-    audio_data = text_to_speech(story)
+    audio_data = text_to_speech(story, voice_name="Rachel")
     if audio_data:
         st.audio(audio_data, format="audio/mp3")
 
