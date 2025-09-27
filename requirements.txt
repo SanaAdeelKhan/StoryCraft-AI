@@ -3,4 +3,5 @@ Pillow
 fpdf
 streamlit-drawable-canvas
 google-generativeai
-elevenlabs
+elevenlabs==0.2.9
+
