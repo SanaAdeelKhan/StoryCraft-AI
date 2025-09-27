@@ -18,6 +18,18 @@ Design the Book – Each page places the picture on one side and the text/story 
 
 Download as PDF – Users can save or print their personalized storybook.
 
+## 🖍️ Sample Doodles → Storybook
+
+Here’s how messy kids’ doodles transform into magical stories:
+
+| Uploaded Doodle | AI Storybook Page |
+|-----------------|-------------------|
+| ![Doodle 1](samples/doodle1.png) | “Once upon a time, a flying cat explored the skies...” |
+| ![Doodle 2](samples/doodle2.png) | “Deep in the forest, two smiling suns guided the hero...” |
+| ![Doodle 3](samples/doodle3.png) | “A brave fish jumped out of the water to save its friends...” |
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/1eea18eb-a4da-4655-89c7-0de30a61195c" />
+
 ✨ Extra Features (Future Roadmap)
 
 🖌️ AI-enhanced illustrations – Turn doodles into polished digital art.
@@ -51,11 +63,15 @@ PDF Export → FPDF + Pillow.
 
 📂 Files in Repo
 
-app.py → Main application.
-
-requirements.txt → Dependencies.
-
-README.md → You’re reading it 😊.
+StoryCraft-AI/
+│
+├── app.py
+├── requirements.txt
+├── README.md
+└── samples/
+    ├── doodle1.png
+    ├── doodle2.png
+    ├── doodle3.png
 
 🌐 Deployment
 
