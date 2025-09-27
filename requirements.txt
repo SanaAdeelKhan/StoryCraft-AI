@@ -1,7 +1,6 @@
-streamlit
-Pillow
-fpdf
-streamlit-drawable-canvas
-google-generativeai
+streamlit==1.25.0
+Pillow==10.0.0
+fpdf==1.7.2
+streamlit-drawable-canvas==0.10.0
+google-generativeai==0.3.6
 elevenlabs==0.2.9
-
