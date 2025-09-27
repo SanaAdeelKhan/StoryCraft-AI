@@ -14,7 +14,7 @@ st.title("📚 StoryCraft AI – AI Storybook Generator")
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
-image_model = genai.GenerativeModel("models/imagen-4.0-ultra-generate-preview-06-06")
+image_model = genai.GenerativeModel("models/imagen-4.0-generate-preview-06-06")
 
 st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
