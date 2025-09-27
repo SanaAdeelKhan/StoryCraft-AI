@@ -1,6 +1,5 @@
-streamlit-drawable-canvas
 streamlit
-transformers
-torch
 Pillow
 fpdf
+google-generativeai
+streamlit-drawable-canvas
