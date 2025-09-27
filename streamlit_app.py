@@ -6,15 +6,27 @@ import google.generativeai as genai
 import io
 import os
 
+# Explicit ElevenLabs imports to avoid recursion issues
+import elevenlabs.api
+import elevenlabs.utils
+
+generate = elevenlabs.api.generate
+set_api_key = elevenlabs.api.set_api_key
+voices = elevenlabs.api.voices
+play = elevenlabs.utils.play
+
 # --- Setup ---
 st.set_page_config(page_title="StoryCraft AI", layout="wide")
-st.title("📚 StoryCraft AI – AI Storybook Generator")
+st.title("📚 StoryCraft AI – AI Storybook Generator with TTS")
 
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
+# ElevenLabs API setup
+set_api_key(os.getenv("ELEVENLABS_API_KEY"))
+
+st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!")
 
 # --- Input Options ---
 st.sidebar.header("Choose Input Method")
@@ -24,7 +36,6 @@ uploaded_files = []
 drawn_image = None
 typed_description = None
 
-# Clear canvas button
 clear_canvas = st.sidebar.button("🧹 Clear Canvas")
 if clear_canvas:
     st.session_state["canvas_cleared"] = True
@@ -90,14 +101,27 @@ def create_pdf(story_text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_font("Arial", size=14)
+    pdf.set_font("Arial", size=12)
     pdf.multi_cell(0, 10, story_text)
     pdf_path = "storybook.pdf"
     pdf.output(pdf_path)
     return pdf_path
 
+# --- ElevenLabs TTS ---
+def text_to_speech(text, voice_name="Rachel"):
+    try:
+        audio = generate(
+            text=text,
+            voice=voice_name,
+            model="eleven_multilingual_v1"
+        )
+        return audio
+    except Exception as e:
+        st.error(f"TTS generation failed: {e}")
+        return None
+
 # --- Main Storybook Logic ---
-if st.button("✨ Generate Storybook"):
+if st.button("✨ Generate Storybook with TTS"):
     captions = []
 
     if uploaded_files:
@@ -127,7 +151,22 @@ if st.button("✨ Generate Storybook"):
     st.subheader("📖 Generated Story")
     st.write(story)
 
-    # Create downloadable PDF without illustrations
+    # Voice selection
+    st.subheader("🔊 Select Voice for TTS")
+    try:
+        available_voices = voices()
+        voice_names = [v.name for v in available_voices]
+        selected_voice = st.selectbox("Choose voice:", voice_names, index=0)
+    except Exception as e:
+        st.error(f"Could not load voices: {e}")
+        selected_voice = "Rachel"
+
+    st.subheader("🔊 Story Audio Playback")
+    audio_data = text_to_speech(story, voice_name=selected_voice)
+    if audio_data:
+        st.audio(audio_data, format="audio/mp3")
+
+    # Create downloadable PDF
     pdf_file = create_pdf(story)
     with open(pdf_file, "rb") as f:
         st.download_button("📥 Download Storybook (PDF)", f, file_name="storybook.pdf")
