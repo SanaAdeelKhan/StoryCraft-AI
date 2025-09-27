@@ -14,7 +14,7 @@ st.title("📚 StoryCraft AI – AI Storybook Generator")
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
-image_model = genai.GenerativeModel("models/imagen-4.0-fast-generate-001")
+image_model = genai.GenerativeModel("models/imagen-4.0-generate-001")  # ✅ Updated model
 
 st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
@@ -116,7 +116,6 @@ if st.button("✨ Generate Storybook"):
         for f in uploaded_files:
             captions.append(f"A doodle of {os.path.basename(f.name)}")
     elif drawn_image:
-        # Recognize object from doodle
         img_bytes = io.BytesIO()
         drawn_image.save(img_bytes, format="PNG")
         img_bytes = img_bytes.getvalue()
