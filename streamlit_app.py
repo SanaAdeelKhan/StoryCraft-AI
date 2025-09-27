@@ -5,16 +5,21 @@ from fpdf import FPDF
 import google.generativeai as genai
 import io
 import os
+import base64
+from elevenlabs import generate, set_api_key
 
 # --- Setup ---
 st.set_page_config(page_title="StoryCraft AI", layout="wide")
-st.title("📚 StoryCraft AI – AI Storybook Generator")
+st.title("📚 StoryCraft AI – AI Storybook Generator with TTS")
 
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
+# ElevenLabs setup
+set_api_key(os.getenv("ELEVENLABS_API_KEY"))
+
+st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!")
 
 # --- Input Options ---
 st.sidebar.header("Choose Input Method")
@@ -24,7 +29,6 @@ uploaded_files = []
 drawn_image = None
 typed_description = None
 
-# Clear canvas button
 clear_canvas = st.sidebar.button("🧹 Clear Canvas")
 if clear_canvas:
     st.session_state["canvas_cleared"] = True
@@ -90,44 +94,68 @@ def create_pdf(story_text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_font("Arial", size=14)
+    pdf.set_font("Arial", size=12)
     pdf.multi_cell(0, 10, story_text)
     pdf_path = "storybook.pdf"
     pdf.output(pdf_path)
     return pdf_path
 
-# --- Main Storybook Logic ---
+# --- ElevenLabs TTS ---
+def text_to_speech(text, voice_name="Rachel"):
+    try:
+        audio = generate(
+            text=text,
+            voice=voice_name,
+            model="eleven_multilingual_v1"
+        )
+        return audio
+    except Exception as e:
+        st.error(f"TTS generation failed: {e}")
+        return None
+
+# --- Main Story Generation Flow ---
 if st.button("✨ Generate Storybook"):
-    captions = []
+    with st.spinner("Generating story... 📖"):
+        captions = []
 
-    if uploaded_files:
-        for f in uploaded_files:
-            captions.append(f"A doodle of {os.path.basename(f.name)}")
-    elif drawn_image:
-        img_bytes = io.BytesIO()
-        drawn_image.save(img_bytes, format="PNG")
-        img_bytes = img_bytes.getvalue()
+        if uploaded_files:
+            for f in uploaded_files:
+                captions.append(f"A doodle of {os.path.basename(f.name)}")
+        elif drawn_image:
+            img_bytes = io.BytesIO()
+            drawn_image.save(img_bytes, format="PNG")
+            img_bytes = img_bytes.getvalue()
 
-        detect_prompt = """
-        You are an art teacher for kids.
-        Look at this doodle and guess what object it represents (like star, moon, sun, house, tree, etc).
-        Answer in 1-3 words only.
-        """
-        detect_response = text_model.generate_content([detect_prompt, {"mime_type": "image/png", "data": img_bytes}])
-        object_name = detect_response.text.strip()
+            detect_prompt = """
+            You are an art teacher for kids.
+            Look at this doodle and guess what object it represents (like star, moon, sun, house, tree, etc).
+            Answer in 1-3 words only.
+            """
+            detect_response = text_model.generate_content([detect_prompt, {"mime_type": "image/png", "data": img_bytes}])
+            object_name = detect_response.text.strip()
 
-        captions.append(f"A child’s doodle of {object_name}")
-    elif typed_description:
-        captions.append(typed_description)
-    else:
-        st.warning("Please upload, draw, or describe something!")
-        st.stop()
+            captions.append(f"A child’s doodle of {object_name}")
+        elif typed_description:
+            captions.append(typed_description)
+        else:
+            st.warning("Please upload, draw, or describe something!")
+            st.stop()
 
-    story = generate_story(captions, theme)
+        story = generate_story(captions, theme)
+        st.session_state["generated_story"] = story
+
     st.subheader("📖 Generated Story")
-    st.write(story)
+    st.write(st.session_state["generated_story"])
 
-    # Create downloadable PDF without illustrations
-    pdf_file = create_pdf(story)
-    with open(pdf_file, "rb") as f:
-        st.download_button("📥 Download Storybook (PDF)", f, file_name="storybook.pdf")
+# --- Separate TTS Button ---
+if "generated_story" in st.session_state:
+    if st.button("🔊 Generate & Play Story Audio"):
+        with st.spinner("Generating speech... 🎙️"):
+            audio_data = text_to_speech(st.session_state["generated_story"], voice_name="Rachel")
+        if audio_data:
+            st.audio(audio_data, format="audio/mp3")
+
+    if st.button("📥 Download Storybook PDF"):
+        pdf_file = create_pdf(st.session_state["generated_story"])
+        with open(pdf_file, "rb") as f:
+            st.download_button("Download PDF", f, file_name="storybook.pdf")
