@@ -91,8 +91,15 @@ def generate_story(captions, theme="Fantasy"):
 def generate_illustration(scene_text):
     try:
         style_prompt = f"Create a cartoon style illustration for: {scene_text}"
-        response = image_model.generate_content(style_prompt)
-        image_base64 = response.candidates[0].content.parts[0].inline_data.data
+
+        response = image_model.generate_content(
+            [
+                {"type": "input_text", "text": style_prompt}
+            ],
+            modalities=["IMAGE", "TEXT"]
+        )
+
+        image_base64 = response.candidates[0].content[0].image.image_data
         image_bytes = base64.b64decode(image_base64)
         return Image.open(io.BytesIO(image_bytes))
     except Exception as e:
