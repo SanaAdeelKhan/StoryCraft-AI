@@ -87,20 +87,17 @@ def generate_story(captions, theme="Fantasy"):
     except Exception as e:
         return f"(Fallback Story) Once upon a time, there was a doodle that became a magical adventure. [Error: {e}]"
 
-# --- Illustration Generation (3 variations per scene) ---
-def generate_illustrations(scene_text):
-    images = []
-    styles = ["cartoon", "realistic", "watercolor"]
-    for style in styles:
-        try:
-            style_prompt = f"Create a {style} illustration for: {scene_text}"
-            response = image_model.generate_content(style_prompt)
-            image_base64 = response.candidates[0].content.parts[0].inline_data.data
-            image_bytes = base64.b64decode(image_base64)
-            images.append((Image.open(io.BytesIO(image_bytes)), style))
-        except Exception as e:
-            st.warning(f"Illustration generation failed for style '{style}': {e}")
-    return images
+# --- Illustration Generation (single style: cartoon) ---
+def generate_illustration(scene_text):
+    try:
+        style_prompt = f"Create a cartoon style illustration for: {scene_text}"
+        response = image_model.generate_content(style_prompt)
+        image_base64 = response.candidates[0].content.parts[0].inline_data.data
+        image_bytes = base64.b64decode(image_base64)
+        return Image.open(io.BytesIO(image_bytes))
+    except Exception as e:
+        st.warning(f"Illustration generation failed: {e}")
+        return None
 
 # --- PDF Creation ---
 def create_pdf(images, story_text):
@@ -108,7 +105,7 @@ def create_pdf(images, story_text):
     pdf.set_auto_page_break(auto=True, margin=15)
     story_pages = story_text.split("\n")
 
-    for i, (img, style) in enumerate(images):
+    for i, img in enumerate(images):
         pdf.add_page()
         img_path = f"temp_{i}.png"
         img.save(img_path)
@@ -116,7 +113,7 @@ def create_pdf(images, story_text):
         os.remove(img_path)
         pdf.set_font("Arial", size=12)
         pdf.set_xy(110, 20)
-        pdf.multi_cell(90, 10, f"{story_pages[i] if i < len(story_pages) else ''}\n\n[Style: {style}]")
+        pdf.multi_cell(90, 10, story_pages[i] if i < len(story_pages) else "")
 
     pdf_path = "storybook.pdf"
     pdf.output(pdf_path)
@@ -157,10 +154,10 @@ if st.button("✨ Generate Storybook"):
     images = []
     st.subheader("🎨 Illustration Options")
     for i, scene in enumerate(story.split("\n")):
-        scene_images = generate_illustrations(scene)
-        for img, style in scene_images:
-            images.append((img, style))
-            st.image(img, caption=f"Scene {i+1} — Style: {style}")
+        img = generate_illustration(scene)
+        if img:
+            images.append(img)
+            st.image(img, caption=f"Scene {i+1} — Style: cartoon")
 
     # Create downloadable PDF
     if images:
