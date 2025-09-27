@@ -14,7 +14,7 @@ st.title("📚 StoryCraft AI – AI Storybook Generator")
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
-image_model = genai.GenerativeModel("models/imagen-4.0-generate-001")  # ✅ Correct model
+image_model = genai.GenerativeModel("models/imagen-4.0-ultra-generate-preview-06-06")  # ✅ Supported model
 
 st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
@@ -26,9 +26,10 @@ uploaded_files = []
 drawn_image = None
 typed_description = None
 
-# Clear canvas button (placed globally so it works always)
-if st.button("🧹 Clear Canvas"):
-    st.experimental_rerun()
+# Clear canvas button
+clear_canvas = st.sidebar.button("🧹 Clear Canvas")
+if clear_canvas:
+    st.session_state["canvas_cleared"] = True
 
 if option == "Upload Images":
     uploaded_files = st.file_uploader(
@@ -38,6 +39,9 @@ if option == "Upload Images":
     )
 
 elif option == "Draw a Doodle":
+    if "canvas_cleared" not in st.session_state:
+        st.session_state["canvas_cleared"] = False
+
     canvas = st_canvas(
         fill_color="rgba(255,255,255,1)",
         stroke_width=4,
@@ -48,6 +52,11 @@ elif option == "Draw a Doodle":
         drawing_mode="freedraw",
         key="canvas"
     )
+
+    if st.session_state["canvas_cleared"]:
+        canvas.image_data = None
+        st.session_state["canvas_cleared"] = False
+
     if canvas.image_data is not None:
         drawn_image = Image.fromarray((canvas.image_data).astype("uint8"))
 
@@ -78,16 +87,20 @@ def generate_story(captions, theme="Fantasy"):
     except Exception as e:
         return f"(Fallback Story) Once upon a time, there was a doodle that became a magical adventure. [Error: {e}]"
 
-# --- Illustration Generation ---
-def generate_illustration(scene_text):
-    try:
-        response = image_model.generate_content([scene_text])
-        image_base64 = response.candidates[0].content.parts[0].inline_data.data
-        image_bytes = base64.b64decode(image_base64)
-        return Image.open(io.BytesIO(image_bytes))
-    except Exception as e:
-        st.warning(f"Illustration generation failed: {e}")
-        return None
+# --- Illustration Generation (3 variations per scene) ---
+def generate_illustrations(scene_text):
+    images = []
+    styles = ["cartoon", "realistic", "watercolor"]
+    for style in styles:
+        try:
+            style_prompt = f"Create a {style} illustration for: {scene_text}"
+            response = image_model.generate_content(style_prompt)
+            image_base64 = response.candidates[0].content.parts[0].inline_data.data
+            image_bytes = base64.b64decode(image_base64)
+            images.append((Image.open(io.BytesIO(image_bytes)), style))
+        except Exception as e:
+            st.warning(f"Illustration generation failed for style {style}: {e}")
+    return images
 
 # --- PDF Creation ---
 def create_pdf(images, story_text):
@@ -95,7 +108,7 @@ def create_pdf(images, story_text):
     pdf.set_auto_page_break(auto=True, margin=15)
     story_pages = story_text.split("\n")
 
-    for i, img in enumerate(images):
+    for i, (img, style) in enumerate(images):
         pdf.add_page()
         img_path = f"temp_{i}.png"
         img.save(img_path)
@@ -103,7 +116,7 @@ def create_pdf(images, story_text):
         os.remove(img_path)
         pdf.set_font("Arial", size=12)
         pdf.set_xy(110, 20)
-        pdf.multi_cell(90, 10, story_pages[i] if i < len(story_pages) else "")
+        pdf.multi_cell(90, 10, f"{story_pages[i] if i < len(story_pages) else ''}\n\n[Style: {style}]")
 
     pdf_path = "storybook.pdf"
     pdf.output(pdf_path)
@@ -144,10 +157,10 @@ if st.button("✨ Generate Storybook"):
     images = []
     st.subheader("🎨 Illustration Options")
     for i, scene in enumerate(story.split("\n")):
-        img = generate_illustration(scene)
-        if img:
-            images.append(img)
-            st.image(img, caption=f"Option {i+1}")
+        scene_images = generate_illustrations(scene)
+        for img, style in scene_images:
+            images.append((img, style))
+            st.image(img, caption=f"Scene {i+1} — Style: {style}")
 
     if images:
         pdf_file = create_pdf(images, story)
