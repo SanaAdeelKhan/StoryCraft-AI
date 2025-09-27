@@ -1,6 +1,6 @@
 streamlit
-streamlit-drawable-canvas
 Pillow
 fpdf
+streamlit-drawable-canvas
 google-generativeai
-numpy
+elevenlabs
