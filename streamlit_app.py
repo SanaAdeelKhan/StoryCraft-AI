@@ -5,7 +5,6 @@ from fpdf import FPDF
 import google.generativeai as genai
 import io
 import os
-import base64
 
 # --- Setup ---
 st.set_page_config(page_title="StoryCraft AI", layout="wide")
@@ -14,7 +13,6 @@ st.title("📚 StoryCraft AI – AI Storybook Generator")
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
-image_model = genai.GenerativeModel("models/imagen-3.0-generate-002")  # ✅ Updated to working model
 
 st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
@@ -87,34 +85,13 @@ def generate_story(captions, theme="Fantasy"):
     except Exception as e:
         return f"(Fallback Story) Once upon a time, there was a doodle that became a magical adventure. [Error: {e}]"
 
-# --- Illustration Generation (single style: cartoon) ---
-def generate_illustration(scene_text):
-    try:
-        style_prompt = f"Create a cartoon style illustration for: {scene_text}"
-        response = image_model.generate_content(style_prompt)
-        image_base64 = response.candidates[0].content.parts[0].inline_data.data
-        image_bytes = base64.b64decode(image_base64)
-        return Image.open(io.BytesIO(image_bytes))
-    except Exception as e:
-        st.warning(f"Illustration generation failed: {e}")
-        return None
-
 # --- PDF Creation ---
-def create_pdf(images, story_text):
+def create_pdf(story_text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
-    story_pages = story_text.split("\n")
-
-    for i, img in enumerate(images):
-        pdf.add_page()
-        img_path = f"temp_{i}.png"
-        img.save(img_path)
-        pdf.image(img_path, x=10, y=20, w=90)
-        os.remove(img_path)
-        pdf.set_font("Arial", size=12)
-        pdf.set_xy(110, 20)
-        pdf.multi_cell(90, 10, story_pages[i] if i < len(story_pages) else "")
-
+    pdf.add_page()
+    pdf.set_font("Arial", size=14)
+    pdf.multi_cell(0, 10, story_text)
     pdf_path = "storybook.pdf"
     pdf.output(pdf_path)
     return pdf_path
@@ -150,17 +127,7 @@ if st.button("✨ Generate Storybook"):
     st.subheader("📖 Generated Story")
     st.write(story)
 
-    # Generate illustrations
-    images = []
-    st.subheader("🎨 Illustration")
-    for i, scene in enumerate(story.split("\n")):
-        img = generate_illustration(scene)
-        if img:
-            images.append(img)
-            st.image(img, caption=f"Scene {i+1} — Cartoon Style")
-
-    # Create downloadable PDF
-    if images:
-        pdf_file = create_pdf(images, story)
-        with open(pdf_file, "rb") as f:
-            st.download_button("📥 Download Storybook (PDF)", f, file_name="storybook.pdf")
+    # Create downloadable PDF without illustrations
+    pdf_file = create_pdf(story)
+    with open(pdf_file, "rb") as f:
+        st.download_button("📥 Download Storybook (PDF)", f, file_name="storybook.pdf")
