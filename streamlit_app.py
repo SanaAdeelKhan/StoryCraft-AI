@@ -30,7 +30,7 @@ model = None
 if api_key:
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-1.5-flash-latest")
         genai_available = True
     except Exception as e:
         # model creation/access failed (maybe no access to that exact model)
