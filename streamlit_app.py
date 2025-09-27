@@ -5,20 +5,16 @@ from fpdf import FPDF
 import google.generativeai as genai
 import io
 import os
-from elevenlabs import generate, set_api_key, voices
 
 # --- Setup ---
-st.set_page_config(page_title="StoryCraft AI with TTS", layout="wide")
-st.title("📚 StoryCraft AI – Story Generator with TTS")
+st.set_page_config(page_title="StoryCraft AI", layout="wide")
+st.title("📚 StoryCraft AI – AI Storybook Generator")
 
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-# ElevenLabs setup
-set_api_key(os.getenv("ELEVENLABS_API_KEY"))
-
-st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!")
+st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
 # --- Input Options ---
 st.sidebar.header("Choose Input Method")
@@ -28,6 +24,7 @@ uploaded_files = []
 drawn_image = None
 typed_description = None
 
+# Clear canvas button
 clear_canvas = st.sidebar.button("🧹 Clear Canvas")
 if clear_canvas:
     st.session_state["canvas_cleared"] = True
@@ -71,11 +68,6 @@ theme = st.selectbox(
     index=0
 )
 
-# --- ElevenLabs Voices ---
-voice_list = voices()
-voice_names = [voice.name for voice in voice_list]
-selected_voice = st.sidebar.selectbox("Choose Voice", voice_names)
-
 # --- Story Generation ---
 def generate_story(captions, theme="Fantasy"):
     prompt = f"Write a short children's story in a {theme} style based on these scenes:\n"
@@ -98,27 +90,14 @@ def create_pdf(story_text):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    pdf.set_font("Arial", size=14)
     pdf.multi_cell(0, 10, story_text)
     pdf_path = "storybook.pdf"
     pdf.output(pdf_path)
     return pdf_path
 
-# --- ElevenLabs TTS ---
-def text_to_speech(text, voice_name):
-    try:
-        audio = generate(
-            text=text,
-            voice=voice_name,
-            model="eleven_multilingual_v1"
-        )
-        return audio
-    except Exception as e:
-        st.error(f"TTS generation failed: {e}")
-        return None
-
 # --- Main Storybook Logic ---
-if st.button("✨ Generate Storybook with TTS"):
+if st.button("✨ Generate Storybook"):
     captions = []
 
     if uploaded_files:
@@ -148,11 +127,7 @@ if st.button("✨ Generate Storybook with TTS"):
     st.subheader("📖 Generated Story")
     st.write(story)
 
-    st.subheader("🔊 Story Audio Playback")
-    audio_data = text_to_speech(story, selected_voice)
-    if audio_data:
-        st.audio(audio_data, format="audio/mp3")
-
+    # Create downloadable PDF without illustrations
     pdf_file = create_pdf(story)
     with open(pdf_file, "rb") as f:
         st.download_button("📥 Download Storybook (PDF)", f, file_name="storybook.pdf")
