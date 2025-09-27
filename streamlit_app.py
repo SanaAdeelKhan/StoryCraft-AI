@@ -5,7 +5,7 @@ from fpdf import FPDF
 import google.generativeai as genai
 import io
 import os
-import requests
+import base64
 
 # --- Setup ---
 st.set_page_config(page_title="StoryCraft AI", layout="wide")
@@ -14,9 +14,9 @@ st.title("📚 StoryCraft AI – AI Storybook Generator")
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
-image_model = genai.GenerativeModel("models/gemini-2.5-flash-image-preview")  # ✅ Updated model
+image_model = genai.GenerativeModel("models/imagen-3.0-generate-002")  # ✅ Updated to working model
 
-st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI-generated stories!")
+st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
 # --- Input Options ---
 st.sidebar.header("Choose Input Method")
@@ -92,9 +92,8 @@ def generate_illustration(scene_text):
     try:
         style_prompt = f"Create a cartoon style illustration for: {scene_text}"
         response = image_model.generate_content(style_prompt)
-        # Get first image from the response
-        image_url = response.candidates[0].content[0].image.uri
-        image_bytes = requests.get(image_url).content
+        image_base64 = response.candidates[0].content.parts[0].inline_data.data
+        image_bytes = base64.b64decode(image_base64)
         return Image.open(io.BytesIO(image_bytes))
     except Exception as e:
         st.warning(f"Illustration generation failed: {e}")
@@ -153,7 +152,7 @@ if st.button("✨ Generate Storybook"):
 
     # Generate illustrations
     images = []
-    st.subheader("🎨 Illustration Options")
+    st.subheader("🎨 Illustration")
     for i, scene in enumerate(story.split("\n")):
         img = generate_illustration(scene)
         if img:
