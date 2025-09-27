@@ -14,7 +14,7 @@ st.title("📚 StoryCraft AI – AI Storybook Generator")
 # Gemini API setup
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
-image_model = genai.GenerativeModel("models/imagen-4.0-generate-001")  # ✅ Updated model
+image_model = genai.GenerativeModel("models/imagen-4.0-generate-001")  # ✅ Correct model
 
 st.markdown("Turn kids’ messy doodles, drawings, or text into magical AI-generated stories!")
 
@@ -25,6 +25,10 @@ option = st.sidebar.radio("Select how to start:", ["Upload Images", "Draw a Dood
 uploaded_files = []
 drawn_image = None
 typed_description = None
+
+# Clear canvas button (placed globally so it works always)
+if st.button("🧹 Clear Canvas"):
+    st.experimental_rerun()
 
 if option == "Upload Images":
     uploaded_files = st.file_uploader(
@@ -46,9 +50,6 @@ elif option == "Draw a Doodle":
     )
     if canvas.image_data is not None:
         drawn_image = Image.fromarray((canvas.image_data).astype("uint8"))
-
-    if st.button("🧹 Clear Canvas"):
-        st.experimental_rerun()
 
 elif option == "Type Description":
     typed_description = st.text_area("Describe your doodle or scene here:")
@@ -108,7 +109,7 @@ def create_pdf(images, story_text):
     pdf.output(pdf_path)
     return pdf_path
 
-# --- Main ---
+# --- Main Storybook Logic ---
 if st.button("✨ Generate Storybook"):
     captions = []
 
