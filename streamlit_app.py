@@ -5,8 +5,8 @@ from fpdf import FPDF
 import google.generativeai as genai
 import io
 import os
-import elevenlabs
 import base64
+from elevenlabs import generate, set_api_key, voices, play
 
 # --- Setup ---
 st.set_page_config(page_title="StoryCraft AI", layout="wide")
@@ -16,10 +16,10 @@ st.title("📚 StoryCraft AI – AI Storybook Generator with TTS")
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 text_model = genai.GenerativeModel("models/gemini-2.5-flash")
 
-# ElevenLabs API setup
-elevenlabs.api_key = os.getenv("ELEVENLABS_API_KEY")
+# ElevenLabs setup
+set_api_key(os.getenv("ELEVENLABS_API_KEY"))
 
-st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI-generated stories with voice narration!")
+st.markdown("Turn kids’ doodles, drawings, or descriptions into magical AI stories — and listen to them!")
 
 # --- Input Options ---
 st.sidebar.header("Choose Input Method")
@@ -29,7 +29,6 @@ uploaded_files = []
 drawn_image = None
 typed_description = None
 
-# Clear canvas button
 clear_canvas = st.sidebar.button("🧹 Clear Canvas")
 if clear_canvas:
     st.session_state["canvas_cleared"] = True
@@ -73,13 +72,6 @@ theme = st.selectbox(
     index=0
 )
 
-# --- Voice Selection ---
-voice = st.selectbox(
-    "Choose Narration Voice",
-    ["Rachel", "Antoni", "Adam", "Bella"],
-    index=0
-)
-
 # --- Story Generation ---
 def generate_story(captions, theme="Fantasy"):
     prompt = f"Write a short children's story in a {theme} style based on these scenes:\n"
@@ -97,22 +89,6 @@ def generate_story(captions, theme="Fantasy"):
     except Exception as e:
         return f"(Fallback Story) Once upon a time, there was a doodle that became a magical adventure. [Error: {e}]"
 
-# --- TTS with ElevenLabs ---
-from elevenlabs import generate, save
-
-def generate_tts_elevenlabs(text, voice="Rachel", filename="story.mp3"):
-    try:
-        audio = generate(
-            text=text,
-            voice=voice,
-            model="eleven_multilingual_v1"
-        )
-        save(audio, filename)
-        return filename
-    except Exception as e:
-        st.warning(f"TTS generation failed: {e}")
-        return None
-
 # --- PDF Creation ---
 def create_pdf(story_text):
     pdf = FPDF()
@@ -124,8 +100,21 @@ def create_pdf(story_text):
     pdf.output(pdf_path)
     return pdf_path
 
+# --- ElevenLabs TTS ---
+def text_to_speech(text, voice_name="Rachel"):
+    try:
+        audio = generate(
+            text=text,
+            voice=voice_name,
+            model="eleven_multilingual_v1"
+        )
+        return audio
+    except Exception as e:
+        st.error(f"TTS generation failed: {e}")
+        return None
+
 # --- Main Storybook Logic ---
-if st.button("✨ Generate Storybook & Narration"):
+if st.button("✨ Generate Storybook with TTS"):
     captions = []
 
     if uploaded_files:
@@ -151,16 +140,15 @@ if st.button("✨ Generate Storybook & Narration"):
         st.warning("Please upload, draw, or describe something!")
         st.stop()
 
-    # Generate Story
     story = generate_story(captions, theme)
     st.subheader("📖 Generated Story")
     st.write(story)
 
-    # Generate TTS narration
-    tts_file = generate_tts_elevenlabs(story, voice=voice, filename="story.mp3")
-    if tts_file:
-        st.audio(tts_file, format="audio/mp3")
-        st.download_button("📥 Download Story Narration (MP3)", tts_file, file_name="story.mp3")
+    st.subheader("🔊 Story Audio Playback")
+    # TTS
+    audio_data = text_to_speech(story)
+    if audio_data:
+        st.audio(audio_data, format="audio/mp3")
 
     # Create downloadable PDF
     pdf_file = create_pdf(story)
