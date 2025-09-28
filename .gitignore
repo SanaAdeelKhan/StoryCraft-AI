@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+*.env.*
+*.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
+
+# ElevenLabs / API keys
+.env
+*.key
+
+# Misc
+*.log
+*.sqlite3
