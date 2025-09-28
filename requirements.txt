@@ -7,3 +7,7 @@ elevenlabs==0.2.9
 numpy==1.26.4
 pandas==2.3.2
 typing_extensions==4.15.0
+rich<14,>=10.14.0
+markdown-it-py==3.0.0
+pygments==2.19.2
+mdurl==0.1.2
